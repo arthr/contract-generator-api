@@ -27,13 +27,13 @@ const storage = multer.diskStorage({
 
 // Filtrar para permitir apenas certos tipos de arquivo
 const fileFilter = (_req: Request, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
-  const allowedExtensions = ['.doc', '.docx', '.pdf', '.txt', '.rtf'];
+  const allowedExtensions = ['.doc', '.docx', '.dotx', '.txt', '.rtf'];
   const extension = path.extname(file.originalname).toLowerCase();
   
   if (allowedExtensions.includes(extension)) {
     cb(null, true);
   } else {
-    cb(new Error('Tipo de arquivo não suportado. Permitidos: .doc, .docx, .pdf, .txt, .rtf'));
+    cb(new Error('Tipo de arquivo não suportado. Permitidos: .doc, .docx, .dotx, .txt, .rtf'));
   }
 };
 
