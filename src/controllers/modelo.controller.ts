@@ -105,7 +105,7 @@ export const atualizarModelo = async (req: Request, res: Response): Promise<void
     if (req.file || caminhoTemplate) {
       // Buscar o modelo atual para obter o caminho do arquivo atual
       const modeloAtual = await ModeloModel.findById(id);
-      if (modeloAtual && modeloAtual.caminhoTemplate) {
+      if (modeloAtual && modeloAtual.caminhoTemplate != caminhoTemplate) {
         // Tentar excluir o arquivo antigo
         try {
           fs.unlinkSync(modeloAtual.caminhoTemplate);

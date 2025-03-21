@@ -23,4 +23,28 @@ export interface ModeloInput {
   queryPrincipal: string;
   variaveis: Variavel[];
   arquivoTemplate?: Express.Multer.File;
+}
+
+export interface DadosContrato {
+  principal: Record<string, any>[];
+  variaveis: Record<string, Record<string, any>[]>;
+}
+
+export interface SqlQueryParams {
+  [key: string]: string | number | boolean | Date | null;
+}
+
+export interface ContratoGerado {
+  modeloId: string;
+  parametros: SqlQueryParams;
+  caminhoArquivo: string;
+  dadosContrato?: DadosContrato;
+  dataGeracao: Date;
+  hash: string;
+}
+
+export interface ParametrosGeracaoContrato {
+  modeloId: string;
+  parametros: SqlQueryParams;
+  forcarRegeneracao?: boolean;
 } 
