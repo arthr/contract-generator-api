@@ -90,18 +90,19 @@ export const buscarModeloPorId = async (req: Request, res: Response): Promise<vo
 export const atualizarModelo = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
-    const { titulo, tipo, descricao, queryPrincipal, variaveis } = req.body;
+    const { titulo, tipo, descricao, queryPrincipal, variaveis, caminhoTemplate } = req.body;
     
     let dadosAtualizados: any = {
       titulo,
       tipo,
       descricao,
       queryPrincipal,
-      variaveis: Array.isArray(variaveis) ? variaveis : JSON.parse(variaveis as unknown as string)
+      variaveis: Array.isArray(variaveis) ? variaveis : JSON.parse(variaveis as unknown as string),
+      caminhoTemplate
     };
 
     // Se um novo arquivo foi enviado
-    if (req.file) {
+    if (req.file || caminhoTemplate) {
       // Buscar o modelo atual para obter o caminho do arquivo atual
       const modeloAtual = await ModeloModel.findById(id);
       if (modeloAtual && modeloAtual.caminhoTemplate) {
@@ -112,7 +113,7 @@ export const atualizarModelo = async (req: Request, res: Response): Promise<void
           console.error('Erro ao excluir arquivo antigo:', err);
         }
       }
-      dadosAtualizados.caminhoTemplate = path.join(req.file.destination, req.file.filename);
+      dadosAtualizados.caminhoTemplate = req.file ? path.join(req.file.destination, req.file.filename) : caminhoTemplate;
     }
 
     const modeloAtualizado = await ModeloModel.findByIdAndUpdate(
