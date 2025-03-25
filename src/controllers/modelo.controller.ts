@@ -1,10 +1,24 @@
+/**
+ * Controlador responsável por gerenciar operações relacionadas aos modelos de contratos
+ */
+
 import { Request, Response } from 'express';
 import { ModeloModel } from '../models/modelo.model';
 import { ModeloInput } from '../types';
 import path from 'path';
 import fs from 'fs';
 
-// Upload de arquivo de template
+/**
+ * Realiza o upload de um arquivo de template
+ * @param req - Requisição HTTP contendo o arquivo a ser enviado
+ * @param res - Resposta HTTP com o status e dados do upload
+ * @returns Promise<void>
+ * 
+ * @description
+ * Esta função processa o upload de um arquivo de template para o servidor.
+ * O arquivo deve ser enviado como parte de uma requisição multipart/form-data.
+ * Retorna o caminho do arquivo salvo no servidor.
+ */
 export const uploadTemplate = async (req: Request, res: Response): Promise<void> => {
   try {
     if (!req.file) {
@@ -24,7 +38,24 @@ export const uploadTemplate = async (req: Request, res: Response): Promise<void>
   }
 };
 
-// Criar um novo modelo
+/**
+ * Cria um novo modelo de contrato no sistema
+ * @param req - Requisição HTTP contendo os dados do modelo
+ * @param res - Resposta HTTP com o modelo criado ou mensagem de erro
+ * @returns Promise<void>
+ * 
+ * @description
+ * Cria um novo modelo de contrato com as seguintes informações:
+ * - Título do modelo
+ * - Tipo do modelo
+ * - Descrição
+ * - Query principal para busca de dados
+ * - Lista de variáveis do template
+ * - Caminho do arquivo de template
+ * 
+ * O arquivo de template pode ser enviado diretamente na requisição ou
+ * um caminho previamente salvo pode ser fornecido.
+ */
 export const criarModelo = async (req: Request, res: Response): Promise<void> => {
   try {
     const { titulo, tipo, descricao, queryPrincipal, variaveis } = req.body as ModeloInput;
@@ -57,7 +88,17 @@ export const criarModelo = async (req: Request, res: Response): Promise<void> =>
   }
 };
 
-// Listar todos os modelos
+/**
+ * Lista todos os modelos de contratos cadastrados no sistema
+ * @param _req - Requisição HTTP (não utilizada)
+ * @param res - Resposta HTTP com a lista de modelos
+ * @returns Promise<void>
+ * 
+ * @description
+ * Retorna todos os modelos cadastrados, ordenados por data de criação
+ * (mais recentes primeiro). Cada modelo inclui todas as suas informações
+ * e metadados.
+ */
 export const listarModelos = async (_req: Request, res: Response): Promise<void> => {
   try {
     const modelos = await ModeloModel.find().sort({ createdAt: -1 });
@@ -68,7 +109,16 @@ export const listarModelos = async (_req: Request, res: Response): Promise<void>
   }
 };
 
-// Buscar um modelo por ID
+/**
+ * Busca um modelo específico pelo seu ID
+ * @param req - Requisição HTTP contendo o ID do modelo
+ * @param res - Resposta HTTP com os dados do modelo ou mensagem de erro
+ * @returns Promise<void>
+ * 
+ * @description
+ * Localiza e retorna um modelo específico usando seu ID único.
+ * Se o modelo não for encontrado, retorna um erro 404.
+ */
 export const buscarModeloPorId = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
@@ -86,7 +136,24 @@ export const buscarModeloPorId = async (req: Request, res: Response): Promise<vo
   }
 };
 
-// Atualizar um modelo
+/**
+ * Atualiza um modelo de contrato existente
+ * @param req - Requisição HTTP contendo os novos dados do modelo
+ * @param res - Resposta HTTP com o modelo atualizado ou mensagem de erro
+ * @returns Promise<void>
+ * 
+ * @description
+ * Atualiza um modelo existente com novas informações. Pode atualizar:
+ * - Título
+ * - Tipo
+ * - Descrição
+ * - Query principal
+ * - Lista de variáveis
+ * - Arquivo de template
+ * 
+ * Se um novo arquivo de template for fornecido, o arquivo antigo é excluído
+ * automaticamente do servidor.
+ */
 export const atualizarModelo = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
@@ -134,7 +201,21 @@ export const atualizarModelo = async (req: Request, res: Response): Promise<void
   }
 };
 
-// Excluir um modelo
+/**
+ * Exclui um modelo de contrato e seus arquivos associados
+ * @param req - Requisição HTTP contendo o ID do modelo a ser excluído
+ * @param res - Resposta HTTP com mensagem de sucesso ou erro
+ * @returns Promise<void>
+ * 
+ * @description
+ * Remove completamente um modelo do sistema, incluindo:
+ * - Registro no banco de dados
+ * - Arquivo de template associado
+ * 
+ * Se o modelo não for encontrado, retorna um erro 404.
+ * Se houver erro ao excluir o arquivo físico, o erro é registrado mas
+ * o modelo ainda é removido do banco de dados.
+ */
 export const excluirModelo = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;

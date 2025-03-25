@@ -1,3 +1,7 @@
+/**
+ * Controlador responsável por gerenciar operações relacionadas à geração e manipulação de contratos
+ */
+
 import { Request, Response } from 'express';
 import path from 'path';
 import { ContratoService } from '../services/contrato.service';
@@ -5,8 +9,18 @@ import { SqlQueryParams, ParametrosGeracaoContrato } from '../types';
 import fs from 'fs';
 
 /**
- * Obter dados para geração de contrato
- * Recebe o ID do modelo e parâmetros para executar as queries
+ * Obtém os dados necessários para a geração de um contrato
+ * @param req - Requisição HTTP contendo o ID do modelo e parâmetros da query
+ * @param res - Resposta HTTP com os dados obtidos ou mensagem de erro
+ * @returns Promise<void>
+ * 
+ * @description
+ * Esta função executa as queries SQL necessárias para obter os dados que serão
+ * utilizados na geração do contrato. Os dados são obtidos com base no modelo
+ * selecionado e nos parâmetros fornecidos.
+ * 
+ * O resultado inclui todos os dados necessários para preencher as variáveis
+ * do template do contrato.
  */
 export const obterDadosContrato = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -40,8 +54,20 @@ export const obterDadosContrato = async (req: Request, res: Response): Promise<v
 };
 
 /**
- * Gerar contrato a partir de um modelo
- * Recebe o ID do modelo e os parâmetros necessários para gerar o contrato
+ * Gera um novo contrato a partir de um modelo
+ * @param req - Requisição HTTP contendo o ID do modelo e parâmetros de geração
+ * @param res - Resposta HTTP com informações do contrato gerado ou mensagem de erro
+ * @returns Promise<void>
+ * 
+ * @description
+ * Gera um novo contrato utilizando um modelo existente. O processo inclui:
+ * 1. Validação dos parâmetros fornecidos
+ * 2. Execução das queries para obter os dados
+ * 3. Preenchimento do template com os dados obtidos
+ * 4. Geração do arquivo final do contrato
+ * 
+ * O parâmetro forcarRegeneracao permite gerar uma nova versão mesmo que já
+ * exista um contrato com os mesmos parâmetros.
  */
 export const gerarContrato = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -94,8 +120,17 @@ export const gerarContrato = async (req: Request, res: Response): Promise<void> 
 };
 
 /**
- * Testar execução de query SQL
- * Endpoint para testes de queries SQL - útil durante o desenvolvimento
+ * Testa a execução de uma query SQL
+ * @param req - Requisição HTTP contendo a query e parâmetros para teste
+ * @param res - Resposta HTTP com o resultado da query ou mensagem de erro
+ * @returns Promise<void>
+ * 
+ * @description
+ * Endpoint específico para testes de queries SQL durante o desenvolvimento.
+ * Permite executar queries diretamente para verificar sua sintaxe e resultados
+ * sem gerar um contrato.
+ * 
+ * Útil para debug e validação de queries antes de associá-las a um modelo.
  */
 export const testarQuery = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -123,8 +158,22 @@ export const testarQuery = async (req: Request, res: Response): Promise<void> =>
 };
 
 /**
- * Obter histórico de contratos gerados para um modelo e parâmetros específicos
- * Recebe o ID do modelo e os parâmetros usados na geração
+ * Obtém o histórico de contratos gerados para um modelo específico
+ * @param req - Requisição HTTP contendo o ID do modelo e parâmetros de busca
+ * @param res - Resposta HTTP com o histórico de contratos ou mensagem de erro
+ * @returns Promise<void>
+ * 
+ * @description
+ * Retorna o histórico completo de contratos gerados para um modelo específico,
+ * incluindo todas as versões e seus respectivos parâmetros. O histórico é
+ * filtrado com base nos parâmetros fornecidos para mostrar apenas contratos
+ * relacionados.
+ * 
+ * Cada entrada do histórico inclui:
+ * - Versão do contrato
+ * - Data de geração
+ * - Status (ativo/inativo)
+ * - Informações do arquivo
  */
 export const obterHistoricoContratos = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -188,8 +237,18 @@ export const obterHistoricoContratos = async (req: Request, res: Response): Prom
 };
 
 /**
- * Listar todos os contratos vigentes (ativos)
- * Lista apenas a última versão ativa de cada contrato
+ * Lista todos os contratos vigentes no sistema
+ * @param req - Requisição HTTP contendo filtros opcionais (ex: modeloId)
+ * @param res - Resposta HTTP com a lista de contratos vigentes ou mensagem de erro
+ * @returns Promise<void>
+ * 
+ * @description
+ * Retorna uma lista de todos os contratos atualmente vigentes no sistema.
+ * Por padrão, retorna apenas a última versão ativa de cada contrato.
+ * 
+ * Pode ser filtrado por modelo específico através do parâmetro modeloId.
+ * Cada contrato inclui informações detalhadas sobre sua geração e
+ * localização do arquivo.
  */
 export const listarContratosVigentes = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -237,8 +296,18 @@ export const listarContratosVigentes = async (req: Request, res: Response): Prom
 };
 
 /**
- * Download do arquivo de um modelo
- * Recebe o ID do modelo e retorna o arquivo para download
+ * Realiza o download do arquivo de um modelo
+ * @param req - Requisição HTTP contendo o ID do modelo
+ * @param res - Resposta HTTP com o arquivo para download ou mensagem de erro
+ * @returns Promise<void>
+ * 
+ * @description
+ * Permite o download do arquivo de template de um modelo específico.
+ * O arquivo é enviado com os headers apropriados para download no navegador.
+ * 
+ * Se o arquivo não for encontrado, retorna um erro 404.
+ * O tipo de conteúdo é definido como documento Word para garantir
+ * o download correto do arquivo.
  */
 export const downloadModelo = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -282,8 +351,17 @@ export const downloadModelo = async (req: Request, res: Response): Promise<void>
 };
 
 /**
- * Download do arquivo de um contrato gerado
- * Recebe o ID do modelo e o hash do contrato e retorna o arquivo para download
+ * Realiza o download do arquivo de um contrato gerado
+ * @param req - Requisição HTTP contendo o ID do modelo e hash do contrato
+ * @param res - Resposta HTTP com o arquivo para download ou mensagem de erro
+ * @returns Promise<void>
+ * 
+ * @description
+ * Permite o download do arquivo de um contrato específico usando seu hash único.
+ * O arquivo é enviado com os headers apropriados para download no navegador.
+ * 
+ * Requer tanto o ID do modelo quanto o hash do contrato para localizar
+ * o arquivo correto. Se o arquivo não for encontrado, retorna um erro 404.
  */
 export const downloadContrato = async (req: Request, res: Response): Promise<void> => {
   try {
