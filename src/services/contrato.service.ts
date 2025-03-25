@@ -1,7 +1,8 @@
 import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
-import { createReport } from 'docx-templates';
+import PizZip from 'pizzip';
+import Docxtemplater from 'docxtemplater';
 import { Modelo } from '../types';
 import { ModeloModel } from '../models/modelo.model';
 import { ContratoGeradoModel } from '../models/contratoGerado.model';
@@ -170,12 +171,13 @@ export class ContratoService {
       
       // 2. Preparar os dados para o template
       const templateData = {
-        principal: dadosContrato.principal[0] || {}, // Assume-se que a query principal retorna um único registro
+        principal: {
+          ...dadosContrato.principal[0] || {},
+          hoje: new Date()
+        },
         ...dadosContrato.variaveis
       };
 
-      console.log(templateData);
-      
       // 3. Verificar se o template existe
       if (!fs.existsSync(modelo.caminhoTemplate)) {
         throw new Error(`Template não encontrado: ${modelo.caminhoTemplate}`);
@@ -188,17 +190,50 @@ export class ContratoService {
       const nomeArquivo = `${modelo.titulo.replace(/\s+/g, '_')}_${hash}.docx`;
       const caminhoCompleto = path.join(this.contratoDir, nomeArquivo);
       
-      // 6. Gerar o contrato usando docx-templates
-      const buffer = await createReport({
-        template,
-        data: templateData,
-        cmdDelimiter: ['{{', '}}']
+      // 6. Verificar extensão do template
+      const extensao = path.extname(modelo.caminhoTemplate).toLowerCase();
+      if (extensao !== '.docx') {
+        throw new Error(`Formato de arquivo não suportado: ${extensao}. Use apenas .docx`);
+      }
+      
+      // 7. Gerar o contrato usando docxtemplater
+      const expressionParser = require('docxtemplater/expressions.js');
+      expressionParser.filters.dateToExtenso = function (input: any) {
+        if (!input) return '';
+      
+        const data = new Date(input);
+        if (isNaN(data.getTime())) return '';
+      
+        const meses = [
+          'janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho',
+          'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'
+        ];
+      
+        const dia = data.getDate();
+        const mes = meses[data.getMonth()];
+        const ano = data.getFullYear();
+      
+        return `${dia} de ${mes} de ${ano}`;
+      };
+      
+      const zip = new PizZip(template);
+      const doc = new Docxtemplater(zip, {
+        paragraphLoop: false,
+        linebreaks: true,
+        parser: expressionParser
       });
       
-      // 7. Salvar o arquivo gerado
+      doc.render(templateData);
+      
+      const buffer = doc.getZip().generate({
+        type: 'nodebuffer',
+        compression: 'DEFLATE'
+      });
+      
+      // 8. Salvar o arquivo gerado
       fs.writeFileSync(caminhoCompleto, buffer);
       
-      // 8. Salvar ou atualizar no banco de dados
+      // 9. Salvar ou atualizar no banco de dados
       if (contratoExistente) {
         // Atualizar registro existente
         await ContratoGeradoModel.updateOne(

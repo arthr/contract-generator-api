@@ -19,16 +19,19 @@
   "dependencies": {
     "@types/fs-extra": "^11.0.4",
     "@types/mssql": "^9.1.7",
+    "@types/pizzip": "^3.0.5",
+    "angular-expressions": "^1.4.3",
     "cors": "^2.8.5",
     "docx": "^9.3.0",
-    "docx-templates": "^4.14.1",
+    "docxtemplater": "^3.60.2",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
     "fs-extra": "^11.3.0",
     "mongoose": "^8.12.1",
     "mssql": "^11.0.1",
     "multer": "1.4.5-lts.2",
-    "path-exists": "^5.0.0"
+    "path-exists": "^5.0.0",
+    "pizzip": "^3.1.8"
   },
   "devDependencies": {
     "@types/cors": "^2.8.17",
