@@ -270,6 +270,7 @@ export const listarContratosVigentes = async (req: Request, res: Response): Prom
         versao: contrato.versao,
         dataGeracao: contrato.dataGeracao,
         parametros: contrato.parametros,
+        identificadoresCampos: contrato.identificadoresCampos,
         hash: contrato.hash,
         arquivo: {
           nome: nomeArquivo,

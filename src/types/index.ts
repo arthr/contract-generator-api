@@ -39,6 +39,10 @@ export interface ContratoGerado {
   parametros: SqlQueryParams;
   caminhoArquivo: string;
   dadosContrato?: DadosContrato;
+  identificadoresCampos?: {
+    primario: string | null;
+    secundario: string | null;
+  };
   dataGeracao: Date;
   hash: string;
   versao: number;

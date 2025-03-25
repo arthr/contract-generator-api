@@ -21,6 +21,10 @@ const ContratoGeradoSchema = new Schema<ContratoGeradoDocument>({
     type: Schema.Types.Mixed,
     required: false
   },
+  identificadoresCampos: {
+    primario: { type: String, required: false },
+    secundario: { type: String, required: false }
+  },
   dataGeracao: { 
     type: Date, 
     default: Date.now 

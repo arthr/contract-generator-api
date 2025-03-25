@@ -13,6 +13,7 @@ import {
   ContratoGerado,
   ParametrosGeracaoContrato
 } from '../types';
+import { IdentificadorCamposService } from './identificadorCampos.service';
 
 export class ContratoService {
   // Diretório onde os contratos gerados serão armazenados
@@ -277,6 +278,9 @@ export class ContratoService {
       // 1. Obter os dados para o contrato
       const dadosContrato = await this.obterDadosContrato(modeloId, parametros);
       
+      // Identificar campos primário e secundário
+      const identificadoresCampos = IdentificadorCamposService.identificarCampos(dadosContrato);
+      
       // 2. Preparar os dados para o template
       const templateData = {
         principal: {
@@ -365,6 +369,7 @@ export class ContratoService {
         parametros,
         caminhoArquivo: caminhoCompleto,
         dadosContrato,
+        identificadoresCampos,
         dataGeracao: new Date(),
         hash,
         versao,
