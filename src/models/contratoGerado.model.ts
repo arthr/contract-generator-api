@@ -29,10 +29,19 @@ const ContratoGeradoSchema = new Schema<ContratoGeradoDocument>({
     type: String, 
     required: true,
     index: true
+  },
+  versao: {
+    type: Number,
+    required: true,
+    default: 1
+  },
+  ativo: {
+    type: Boolean,
+    default: true
   }
 }, { timestamps: true });
 
-// Índice composto para buscar contratos por modelo e hash
-ContratoGeradoSchema.index({ modeloId: 1, hash: 1 }, { unique: true });
+// Índice para facilitar a busca por modelo e hash
+ContratoGeradoSchema.index({ modeloId: 1, hash: 1 });
 
 export const ContratoGeradoModel = mongoose.model<ContratoGeradoDocument>('ContratoGerado', ContratoGeradoSchema); 

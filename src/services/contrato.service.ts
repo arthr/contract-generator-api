@@ -20,6 +20,9 @@ export class ContratoService {
     ? path.join(process.env.UPLOAD_DIR, 'contratos-gerados')
     : path.join(process.cwd(), 'uploads', 'contratos-gerados');
 
+  // Armazenar os últimos parâmetros recebidos para comparação
+  private static ultimosParametrosRecebidos: SqlQueryParams = {};
+
   /**
    * Busca um modelo de contrato pelo ID
    * @param id ID do modelo
@@ -89,8 +92,41 @@ export class ContratoService {
    * @returns Hash único para o contrato
    */
   static gerarHashContrato(modeloId: string, parametros: SqlQueryParams): string {
-    const dadosString = JSON.stringify({ modeloId, parametros });
-    return crypto.createHash('md5').update(dadosString).digest('hex');
+    // Normalizar os parâmetros: remover campos vazios, ordenar as chaves
+    // e garantir que o formato seja consistente
+    const parametrosNormalizados = Object.entries(parametros || {})
+      .filter(([_, value]) => value !== null && value !== undefined && value !== '')
+      .sort(([keyA], [keyB]) => keyA.localeCompare(keyB))
+      .reduce((obj, [key, value]) => {
+        // Garantir que datas sejam convertidas para strings no mesmo formato
+        if (value instanceof Date) {
+          obj[key] = value.toISOString();
+        } else if (typeof value === 'string' && !isNaN(Date.parse(value))) {
+          // Se for uma string que parece uma data, normalizar
+          try {
+            const data = new Date(value);
+            if (!isNaN(data.getTime())) {
+              obj[key] = data.toISOString();
+            } else {
+              obj[key] = value;
+            }
+          } catch (e) {
+            obj[key] = value;
+          }
+        } else {
+          obj[key] = value;
+        }
+        return obj;
+      }, {} as Record<string, any>);
+    
+    const dadosString = JSON.stringify({ 
+      modeloId, 
+      parametros: parametrosNormalizados
+    });
+    
+    const hash = crypto.createHash('md5').update(dadosString).digest('hex');
+    
+    return hash;
   }
 
   /**
@@ -103,11 +139,83 @@ export class ContratoService {
     try {
       return await ContratoGeradoModel.findOne({ 
         modeloId, 
-        hash
+        hash,
+        ativo: true
       });
     } catch (error) {
       console.error('Erro ao buscar contrato gerado:', error);
       return null;
+    }
+  }
+
+  /**
+   * Busca o histórico de contratos gerados para um modelo e hash específicos
+   * @param modeloId ID do modelo
+   * @param hash Hash do contrato
+   * @returns Lista de contratos gerados em ordem decrescente de versão
+   */
+  static async buscarHistoricoContratos(modeloId: string, hash: string): Promise<ContratoGerado[]> {
+    try {
+      
+      // Buscar diretamente com o hash fornecido
+      const resultados = await ContratoGeradoModel.find({ 
+        modeloId, 
+        hash
+      }).sort({ versao: -1 });
+      
+      if (resultados.length > 0) {
+        return resultados;
+      }
+      
+      const contratosDoModelo = await ContratoGeradoModel.find({ modeloId }).sort({ dataGeracao: -1 });
+      
+      if (contratosDoModelo.length === 0) {
+        return [];
+      }
+      
+      // Verificar cada contrato para similaridade nos parâmetros
+      const contratosRelacionados = contratosDoModelo.filter(contrato => {
+        try {
+          // Verificar se os parâmetros têm as mesmas chaves e valores,
+          // independentemente da ordem ou format específico
+          const parametrosOriginais = Object.entries(contrato.parametros || {})
+            .filter(([_, value]) => value !== null && value !== undefined && value !== '');
+            
+          const parametrosAtuais = Object.entries(this.ultimosParametrosRecebidos || {})
+            .filter(([_, value]) => value !== null && value !== undefined && value !== '');
+          
+          if (parametrosOriginais.length !== parametrosAtuais.length) {
+            return false;
+          }
+          
+          // Verificar se todas as chaves importantes estão presentes com valores similares
+          const chaves = Object.keys(contrato.parametros || {});
+          return chaves.every(chave => {
+            const valorOriginal = String(contrato.parametros[chave] || '');
+            const valorAtual = String(this.ultimosParametrosRecebidos[chave] || '');
+            
+            // Tratamento especial para datas
+            if (!isNaN(Date.parse(valorOriginal)) && !isNaN(Date.parse(valorAtual))) {
+              return new Date(valorOriginal).toISOString().split('T')[0] === 
+                     new Date(valorAtual).toISOString().split('T')[0];
+            }
+            
+            // Para outros valores, comparar como string
+            return valorOriginal === valorAtual;
+          });
+        } catch (error) {
+          console.error('Erro ao comparar parâmetros:', error);
+          return false;
+        }
+      });
+      
+      return contratosRelacionados.sort((a, b) => {
+        if (!a.versao || !b.versao) return 0;
+        return b.versao - a.versao;
+      });
+    } catch (error) {
+      console.error('Erro ao buscar histórico de contratos:', error);
+      return [];
     }
   }
 
@@ -151,7 +259,7 @@ export class ContratoService {
       // Verificar se já existe um contrato gerado com este hash
       const contratoExistente = await this.buscarContratoGerado(modeloId, hash);
       
-      // Se o contrato já existe, verificamos se precisamos regenerá-lo
+      // Se o contrato já existe e não queremos forçar regeneração, retornamos o contrato existente
       if (contratoExistente && !forcarRegeneracao) {
         // Verificar se o arquivo ainda existe
         if (fs.existsSync(contratoExistente.caminhoArquivo)) {
@@ -186,17 +294,27 @@ export class ContratoService {
       // 4. Ler o template e gerar o relatório
       const template = fs.readFileSync(modelo.caminhoTemplate);
       
-      // 5. Gerar nome de arquivo baseado no hash
-      const nomeArquivo = `${modelo.titulo.replace(/\s+/g, '_')}_${hash}.docx`;
+      // 5. Determinar a versão do contrato
+      let versao = 1;
+      if (contratoExistente) {
+        // Buscar contratos anteriores para determinar a próxima versão
+        const contratosAnteriores = await this.buscarHistoricoContratos(modeloId, hash);
+        if (contratosAnteriores.length > 0) {
+          versao = contratosAnteriores[0].versao + 1;
+        }
+      }
+      
+      // 6. Gerar nome de arquivo baseado no hash e versão
+      const nomeArquivo = `${modelo.titulo.replace(/\s+/g, '_')}_${hash}_v${versao}.docx`;
       const caminhoCompleto = path.join(this.contratoDir, nomeArquivo);
       
-      // 6. Verificar extensão do template
+      // 7. Verificar extensão do template
       const extensao = path.extname(modelo.caminhoTemplate).toLowerCase();
       if (extensao !== '.docx') {
         throw new Error(`Formato de arquivo não suportado: ${extensao}. Use apenas .docx`);
       }
       
-      // 7. Gerar o contrato usando docxtemplater
+      // 8. Gerar o contrato usando docxtemplater
       const expressionParser = require('docxtemplater/expressions.js');
       expressionParser.filters.dateToExtenso = function (input: any) {
         if (!input) return '';
@@ -230,36 +348,58 @@ export class ContratoService {
         compression: 'DEFLATE'
       });
       
-      // 8. Salvar o arquivo gerado
+      // 9. Salvar o arquivo gerado
       fs.writeFileSync(caminhoCompleto, buffer);
       
-      // 9. Salvar ou atualizar no banco de dados
+      // 10. Se existir contrato anterior, desativar (mas manter no histórico)
       if (contratoExistente) {
-        // Atualizar registro existente
         await ContratoGeradoModel.updateOne(
-          { modeloId, hash },
-          {
-            caminhoArquivo: caminhoCompleto,
-            dadosContrato,
-            dataGeracao: new Date()
-          }
+          { modeloId, hash, ativo: true },
+          { ativo: false }
         );
-      } else {
-        // Criar novo registro
-        await ContratoGeradoModel.create({
-          modeloId,
-          parametros,
-          caminhoArquivo: caminhoCompleto,
-          dadosContrato,
-          dataGeracao: new Date(),
-          hash
-        });
       }
+      
+      // 11. Criar novo registro de contrato
+      await ContratoGeradoModel.create({
+        modeloId,
+        parametros,
+        caminhoArquivo: caminhoCompleto,
+        dadosContrato,
+        dataGeracao: new Date(),
+        hash,
+        versao,
+        ativo: true
+      });
       
       return caminhoCompleto;
     } catch (error) {
       console.error('Erro ao gerar contrato:', error);
       throw error;
+    }
+  }
+
+  /**
+   * Busca todos os contratos vigentes (ativos)
+   * @param filtros Filtros opcionais (como modelo específico)
+   * @returns Lista de todos os contratos ativos
+   */
+  static async listarContratosVigentes(filtros?: { modeloId?: string }): Promise<ContratoGerado[]> {
+    try {
+      const consulta: Record<string, any> = { ativo: true };
+      
+      // Adicionar filtro de modelo, se especificado
+      if (filtros?.modeloId) {
+        consulta.modeloId = filtros.modeloId;
+      }
+      
+      // Buscar todos os contratos ativos
+      const contratosAtivos = await ContratoGeradoModel.find(consulta)
+        .sort({ dataGeracao: -1 });
+      
+      return contratosAtivos;
+    } catch (error) {
+      console.error('Erro ao listar contratos vigentes:', error);
+      return [];
     }
   }
 
@@ -277,6 +417,51 @@ export class ContratoService {
       return await SqlQueryService.executeQuery<T>(query, parametros);
     } catch (error) {
       console.error('Erro ao executar query de teste:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Define os últimos parâmetros recebidos para uso na busca
+   * @param parametros Parâmetros recebidos
+   */
+  static definirUltimosParametros(parametros: SqlQueryParams): void {
+    this.ultimosParametrosRecebidos = parametros || {};
+  }
+
+  /**
+   * Obtém o caminho do arquivo de um modelo
+   * @param modeloId ID do modelo
+   * @returns Caminho do arquivo do modelo
+   */
+  static async obterCaminhoModelo(modeloId: string): Promise<string> {
+    try {
+      const modelo = await this.buscarModelo(modeloId);
+      if (!modelo) {
+        throw new Error(`Modelo com ID ${modeloId} não encontrado`);
+      }
+      return path.resolve(modelo.caminhoTemplate);
+    } catch (error) {
+      console.error('Erro ao obter caminho do modelo:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Obtém o caminho do arquivo de um contrato gerado
+   * @param modeloId ID do modelo
+   * @param hash Hash do contrato
+   * @returns Caminho do arquivo do contrato
+   */
+  static async obterCaminhoContrato(modeloId: string, hash: string): Promise<string> {
+    try {
+      const contrato = await this.buscarContratoGerado(modeloId, hash);
+      if (!contrato) {
+        throw new Error(`Contrato não encontrado para o modelo ${modeloId} e hash ${hash}`);
+      }
+      return path.resolve(contrato.caminhoArquivo);
+    } catch (error) {
+      console.error('Erro ao obter caminho do contrato:', error);
       throw error;
     }
   }

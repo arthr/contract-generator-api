@@ -41,6 +41,8 @@ export interface ContratoGerado {
   dadosContrato?: DadosContrato;
   dataGeracao: Date;
   hash: string;
+  versao: number;
+  ativo: boolean;
 }
 
 export interface ParametrosGeracaoContrato {
