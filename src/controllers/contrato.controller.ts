@@ -90,18 +90,27 @@ export const gerarContrato = async (req: Request, res: Response): Promise<void> 
       forcarRegeneracao: !!forcarRegeneracao
     };
     
-    const caminhoContrato = await ContratoService.gerarContrato(params);
+    const contratoGerado = await ContratoService.gerarContrato(params);
     
     // Formatar o caminho para acesso via URL
-    const nomeArquivo = path.basename(caminhoContrato);
+    const nomeArquivo = path.basename(contratoGerado.caminhoArquivo);
     const urlContrato = `/uploads/contratos-gerados/${nomeArquivo}`;
     
     res.status(200).json({
       mensagem: 'Contrato gerado com sucesso',
+      contrato: {
+        modeloId: contratoGerado.modeloId,
+        versao: contratoGerado.versao,
+        dataGeracao: contratoGerado.dataGeracao,
+        parametros: contratoGerado.parametros,
+        identificadoresCampos: contratoGerado.identificadoresCampos,
+        hash: contratoGerado.hash,
+        ativo: contratoGerado.ativo
+      },
       arquivo: {
         nome: nomeArquivo,
         url: urlContrato,
-        caminho: caminhoContrato
+        caminho: contratoGerado.caminhoArquivo
       }
     });
   } catch (error) {

@@ -239,7 +239,7 @@ export class ContratoService {
    * @param params Parâmetros para geração do contrato
    * @returns Caminho do arquivo de contrato gerado
    */
-  static async gerarContrato(params: ParametrosGeracaoContrato): Promise<string> {
+  static async gerarContrato(params: ParametrosGeracaoContrato): Promise<ContratoGerado> {
     const { modeloId, parametros, forcarRegeneracao } = params;
     
     try {
@@ -268,7 +268,7 @@ export class ContratoService {
           // Verificar se o modelo foi modificado após a geração do contrato
           if (!this.modeloModificadoAposGeracao(modelo, contratoExistente)) {
             // Se o arquivo existe e o modelo não foi modificado, retornar o caminho existente
-            return contratoExistente.caminhoArquivo;
+            return contratoExistente;
           }
         }
       }
@@ -364,7 +364,7 @@ export class ContratoService {
       }
       
       // 11. Criar novo registro de contrato
-      await ContratoGeradoModel.create({
+      const contratoGerado = await ContratoGeradoModel.create({
         modeloId,
         parametros,
         caminhoArquivo: caminhoCompleto,
@@ -376,7 +376,7 @@ export class ContratoService {
         ativo: true
       });
       
-      return caminhoCompleto;
+      return contratoGerado;
     } catch (error) {
       console.error('Erro ao gerar contrato:', error);
       throw error;
