@@ -1,0 +1,49 @@
+# mongod.conf.orig - Basic MongoDB configuration
+
+# Where and how to store data.
+storage:
+  dbPath: /data/db
+  journal:
+    enabled: true
+  engine: wiredTiger
+  wiredTiger:
+    engineConfig:
+      cacheSizeGB: 1  # Adjust based on available memory
+      journalCompressor: snappy
+    collectionConfig:
+      blockCompressor: snappy
+
+# Network interfaces
+net:
+  port: 27017
+  bindIp: 0.0.0.0  # Allow connections from any network interface
+  maxIncomingConnections: 65536
+  
+# Security settings
+security:
+  authorization: enabled  # Enable authentication
+
+# Logging configuration
+systemLog:
+  destination: file
+  logAppend: true
+  path: /var/log/mongodb/mongod.log
+  
+# Process management options
+processManagement:
+  timeZoneInfo: /usr/share/zoneinfo
+  fork: false  # For container deployments, typically false
+
+# Operating System settings
+setParameter:
+  enableLocalhostAuthBypass: false
+  
+# Monitoring
+operationProfiling:
+  slowOpThresholdMs: 100
+  mode: slowOp
+
+# Replication
+#replication:
+#  replSetName: rs0  # Uncomment for replica set configuration
+

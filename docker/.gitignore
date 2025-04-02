@@ -1,0 +1,7 @@
+# Environment variables
+.env
+
+# Mongo Data/Logs
+/data/db
+/var/log/mongodb
+
